@@ -1,7 +1,10 @@
 import pygame
+from enum import Enum
 
 SCREEN_WIDTH = 2160
 SCREEN_HEIGHT = 1215
+
+FONT_PATH = '/home/evan/.local/share/fonts/InconsolataNerdFont-Regular.ttf'
 
 TILE_SIZE = 72
 TILE_COLOR = (160, 120, 80)
@@ -9,7 +12,36 @@ BG_COLOR = (55, 57, 58)
 BOARD_COLOR = (168, 157, 149)
 BOARD_SIZE = 1080
 board_x = (SCREEN_WIDTH - BOARD_SIZE) // 2
-board_y = (SCREEN_HEIGHT - BOARD_SIZE) // 2
+board_y = 25
+
+# This enum represents the score multiplier for a tile
+class Space(Enum):
+    SINGLE = 0
+    DOUBLE_LETTER = 1
+    TRIPLE_LETTER = 2
+    DOUBLE_WORD = 3
+    TRIPLE_WORD = 4
+
+spaces: Space = [
+    [4,0,0,1,0,0,0,4,0,0,0,1,0,0,4],
+    [0,3,0,0,0,2,0,0,0,2,0,0,0,3,0],
+    [0,0,3,0,0,0,1,0,1,0,0,0,3,0,0],
+    [1,0,0,3,0,0,0,1,0,0,0,3,0,0,1],
+    [0,0,0,0,3,0,0,0,0,0,3,0,0,0,0],
+    [0,2,0,0,0,2,0,0,0,2,0,0,0,2,0],
+    [0,0,1,0,0,0,1,0,1,0,0,0,1,0,0],
+    [4,0,0,1,0,0,0,0,0,0,0,1,0,0,4],
+    [0,0,1,0,0,0,1,0,1,0,0,0,1,0,0],
+    [0,2,0,0,0,2,0,0,0,2,0,0,0,2,0],
+    [0,0,0,0,3,0,0,0,0,0,3,0,0,0,0],
+    [1,0,0,3,0,0,0,1,0,0,0,3,0,0,1],
+    [0,0,3,0,0,0,1,0,1,0,0,0,3,0,0],
+    [0,3,0,0,0,2,0,0,0,2,0,0,0,2,0],
+    [4,0,0,1,0,0,0,4,0,0,0,1,0,0,4]
+]
+
+# Stores all tiles placed by the players as index in spaces : letter
+placed_tiles = {}
 
 def draw_board(screen):
     pygame.draw.rect(screen, BOARD_COLOR, (board_x, board_y, BOARD_SIZE, BOARD_SIZE))
@@ -22,15 +54,20 @@ def draw_board(screen):
         vert_x_pos = board_x + i*TILE_SIZE
         hor_y_pos = board_y + i*TILE_SIZE
         # Draw vertical lines
-        pygame.draw.line(screen, (0,0,0), (vert_x_pos, board_y), (vert_x_pos, board_y+BOARD_SIZE),2)
+        pygame.draw.line(screen, (0,0,0), (vert_x_pos, board_y), (vert_x_pos, board_y+BOARD_SIZE), 2)
 
         #Draw horizontal lines
         pygame.draw.line(screen, (0,0,0), (board_x, hor_y_pos), (board_x+BOARD_SIZE, hor_y_pos), 2)
 
+
+
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption('Resize Event Handler')
+    pygame.display.set_caption('Scrabble')
+
+    font = pygame.font.Font(FONT_PATH, 12)
 
     running = True
     clock = pygame.time.Clock()
