@@ -41,9 +41,16 @@ spaces: Space = [
 ]
 
 # Stores all tiles placed by the players as index in spaces : letter
+# (0, 0): "A"
 placed_tiles = {}
 
-def draw_board(screen):
+def get_board_pos_px(i, j):
+    x = board_x + i*TILE_SIZE
+    y = board_y + j*TILE_SIZE
+
+    return (x,y)
+
+def draw_board(screen, small_font, letter_font):
     pygame.draw.rect(screen, BOARD_COLOR, (board_x, board_y, BOARD_SIZE, BOARD_SIZE))
 
     # Draw outline
@@ -59,7 +66,39 @@ def draw_board(screen):
         #Draw horizontal lines
         pygame.draw.line(screen, (0,0,0), (board_x, hor_y_pos), (board_x+BOARD_SIZE, hor_y_pos), 2)
 
+    for i in range(0, 15):
+        for j in range(0, 15):
+            text_color = "black"
+            text_top = ""
+            text_bottom = ""
+            pos = get_board_pos_px(i,j)
+            if (i,j) in placed_tiles:
+                letter = letter_font.render(placed_tiles[(i,j)], True, "black")
+                screen.blit(letter, (pos[0]+17, pos[1]-7))
+            else:
+                space = Space(spaces[i][j])
+                match (space):
+                    case Space.DOUBLE_LETTER:
+                        text_color = "cadetblue1"
+                        text_top = "Double"
+                        text_bottom = "Letter"
+                    case Space.TRIPLE_LETTER:
+                        text_color = "aqua"
+                        text_top = "Triple"
+                        text_bottom = "Letter"
+                    case Space.DOUBLE_WORD:
+                        text_color = "lightpink"
+                        text_top = "Double"
+                        text_bottom = "Word"
+                    case Space.TRIPLE_WORD:
+                        text_color = "indianred2"
+                        text_top = "Triple"
+                        text_bottom = "Word"
 
+                top = small_font.render(text_top, True, text_color)
+                bottom = small_font.render(text_bottom, True, text_color)
+                screen.blit(top, (pos[0]+7,pos[1]+10))
+                screen.blit(bottom, (pos[0]+7, pos[1]+35))
 
 
 def main():
@@ -67,7 +106,8 @@ def main():
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption('Scrabble')
 
-    font = pygame.font.Font(FONT_PATH, 12)
+    small_font = pygame.font.Font(FONT_PATH, 20)
+    letter_font = pygame.font.Font(FONT_PATH, 80)
 
     running = True
     clock = pygame.time.Clock()
@@ -81,7 +121,7 @@ def main():
         screen.fill(BG_COLOR)
         
         # Draw a rectangle that scales with window size
-        draw_board(screen)
+        draw_board(screen, small_font, letter_font)
         
         pygame.display.flip()
         clock.tick(60)
