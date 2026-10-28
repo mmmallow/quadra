@@ -14,9 +14,21 @@ BOARD_COLOR = (168, 157, 149)
 BOARD_SIZE = 1080
 BOARD_X = (SCREEN_WIDTH - BOARD_SIZE) // 2
 BOARD_Y = 25
+PLAY_BUTTON_X = SCREEN_WIDTH - SCREEN_WIDTH//8
+PLAY_BUTTON_Y = SCREEN_HEIGHT - SCREEN_HEIGHT//6
 
 PLAYER_BANK_PADDING = BOARD_SIZE // 7
 PLAYER_BANK_Y = BOARD_Y + BOARD_SIZE + 20
+
+class GameState:
+    player_turn = 0
+    err_message = ""
+    # Stores all tiles placed by the players as index in spaces : letter
+    # (0, 0): "A"
+    placed_tiles = {}
+
+    # Tiles placed during a player's turn. Temporary and is wiped after every turn
+    tiles_placed_on_turn = {}
 
 # This enum represents the score multiplier for a tile
 class Space(Enum):
@@ -26,17 +38,14 @@ class Space(Enum):
     DOUBLE_WORD = 3
     TRIPLE_WORD = 4
 
-class PlayerState(Enum):
-    MOVING = 0
-    WAITING = 1
-
 class Player:
     bank = ["", "", "", "", "", "", ""]
     held_letter = ""
-    state: PlayerState = PlayerState.WAITING
+    score = 0
 
-    def __init__(self, screen, letter_font, tiles_placed_on_turn):
+    def __init__(self, screen, small_font, letter_font, tiles_placed_on_turn):
         self.screen = screen
+        self.small_font = small_font
         self.letter_font = letter_font
         self.tiles_placed_on_turn = tiles_placed_on_turn
 
@@ -49,20 +58,16 @@ class Player:
     def Draw(self):
         for i in range(0, 7):
             if (self.bank[i] != ""):
-                letter = self.bank[i];
-                tile = pygame.Rect(BOARD_X + i*(PLAYER_BANK_PADDING)+43, PLAYER_BANK_Y, TILE_SIZE, TILE_SIZE)
-                pygame.draw.rect(self.screen, TILE_COLOR, tile)
-                text = self.letter_font.render(letter, True, "black");
-                self.screen.blit(text, (BOARD_X + i*(PLAYER_BANK_PADDING)+55, PLAYER_BANK_Y-9))
+                x = BOARD_X + i*(PLAYER_BANK_PADDING)+43
+                y = PLAYER_BANK_Y
+                draw_tile(self.screen, self.small_font, self.letter_font, TILE_COLOR, self.bank[i], x, y)
 
         if (self.held_letter != ""):
             mouse_pos = pygame.mouse.get_pos()
             pos = [0, 0]
             pos[0] = mouse_pos[0]-TILE_SIZE//2
             pos[1] = mouse_pos[1]-TILE_SIZE//2
-            pygame.draw.rect(self.screen, TILE_COLOR, (pos[0]-10, pos[1]+9, TILE_SIZE, TILE_SIZE))
-            text = self.letter_font.render(self.held_letter, True, "black")
-            self.screen.blit(text, (pos[0], pos[1]))
+            draw_tile(self.screen, self.small_font, self.letter_font, TILE_COLOR, self.held_letter, pos[0], pos[1])
 
     def handle_left_mouse_press(self):
         mouse_pos = pygame.mouse.get_pos()
@@ -90,6 +95,9 @@ class Player:
             if (board.collidepoint(mouse_pos)):
                 board_x = (mouse_pos[0] - BOARD_X) // TILE_SIZE
                 board_y = (mouse_pos[1] - BOARD_Y) // TILE_SIZE
+                if ((board_x, board_y) in self.tiles_placed_on_turn):
+                    index = self.bank.index("")
+                    self.bank[index] = self.tiles_placed_on_turn[(board_x, board_y)]
                 self.tiles_placed_on_turn[(board_x, board_y)] = self.held_letter
                 self.held_letter = ""
             else:
@@ -127,6 +135,7 @@ letter_distribution = {
     "X":     1,
     "Y":     2,
     "Z":     1,
+    " ":     2,
 }
 
 letter_values = {
@@ -156,6 +165,7 @@ letter_values = {
     "X":     8,
     "Y":     4,
     "Z":     10,
+    " ":     0,
 }
 
 letter_bag = []
@@ -184,11 +194,7 @@ spaces: Space = [
     [4,0,0,1,0,0,0,4,0,0,0,1,0,0,4]
 ]
 
-# Stores all tiles placed by the players as index in spaces : letter
-# (0, 0): "A"
-placed_tiles = {}
-# Tiles placed during a player's turn. Temporary and is wiped after every turn
-tiles_placed_on_turn = {}
+
 
 def init_player(player):
     for i in range(0,7):
@@ -199,6 +205,17 @@ def get_board_pos_px(i, j):
     y = BOARD_Y + j*TILE_SIZE
 
     return (x,y)
+
+############################### Draw Code ###############################
+
+def draw_tile(screen, small_font, letter_font, color, letter, x, y):
+    if (color != None):
+        tile = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
+        pygame.draw.rect(screen, color, tile)
+    text = letter_font.render(letter, True, "black");
+    screen.blit(text, (x+17, y-7))
+    value = small_font.render(str(letter_values[letter]), True, "black")
+    screen.blit(value, (x+TILE_SIZE-TILE_SIZE//6, y+TILE_SIZE-TILE_SIZE//3))
 
 def draw_board(screen, small_font, letter_font):
     pygame.draw.rect(screen, BOARD_COLOR, (BOARD_X, BOARD_Y, BOARD_SIZE, BOARD_SIZE))
@@ -216,18 +233,17 @@ def draw_board(screen, small_font, letter_font):
         #Draw horizontal lines
         pygame.draw.line(screen, (0,0,0), (BOARD_X, hor_y_pos), (BOARD_X+BOARD_SIZE, hor_y_pos), 2)
 
+    draw_star(screen)
+
     for y in range(0, 15):
         for x in range(0, 15):
             text_color = "black"
             text = ""
             pos = get_board_pos_px(x,y)
-            if (x,y) in placed_tiles:
-                letter = letter_font.render(placed_tiles[(x,y)], True, "black")
-                screen.blit(letter, (pos[0]+17, pos[1]-7))
-            elif (x,y) in tiles_placed_on_turn:
-                pygame.draw.rect(screen, TILE_COLOR, (pos[0], pos[1], TILE_SIZE, TILE_SIZE))
-                letter = letter_font.render(tiles_placed_on_turn[(x,y)], True, "black")
-                screen.blit(letter, (pos[0]+17, pos[1]-7))
+            if (x,y) in state.placed_tiles:
+                draw_tile(screen, small_font, letter_font, None, state.placed_tiles[(x,y)], pos[0], pos[1])
+            elif (x,y) in state.tiles_placed_on_turn:
+                draw_tile(screen, small_font, letter_font, TILE_COLOR, state.tiles_placed_on_turn[(x,y)], pos[0], pos[1])
             else:
                 space = Space(spaces[y][x])
                 match (space):
@@ -247,6 +263,65 @@ def draw_board(screen, small_font, letter_font):
                 top = small_font.render(text, True, text_color)
                 screen.blit(top, (pos[0]+7,pos[1]+10))
 
+def draw_star(screen):
+    middle_tile = pygame.Rect(BOARD_X - TILE_SIZE//2 + BOARD_SIZE//2, BOARD_Y - TILE_SIZE//2 + BOARD_SIZE//2, TILE_SIZE, TILE_SIZE)
+    top_point = (middle_tile.x + TILE_SIZE//2, middle_tile.y+5)
+    bottom_left = (middle_tile.x + TILE_SIZE//8, middle_tile.y + TILE_SIZE//2 + TILE_SIZE//4 + TILE_SIZE//8)
+    right = (middle_tile.x+TILE_SIZE-5, middle_tile.y - 10 + TILE_SIZE//2)
+    left = (middle_tile.x+5, middle_tile.y - 10 + TILE_SIZE//2)
+    bottom_right = (middle_tile.x + TILE_SIZE//2 + TILE_SIZE//4 + TILE_SIZE//8, middle_tile.y + TILE_SIZE//2 + TILE_SIZE//4 + TILE_SIZE//8)
+    pygame.draw.lines(screen, "black", True, [top_point, bottom_left, right, left, bottom_right])
+
+def draw_ui(screen, letter_font):
+    score1 = f"Player 1: {player1.score}"
+    text = letter_font.render(score1, True, "white")
+    screen.blit(text, (10, 10))
+    pygame.draw.rect(screen, "grey45", (PLAY_BUTTON_X, PLAY_BUTTON_Y, TILE_SIZE, TILE_SIZE))
+    pygame.draw.polygon(screen, "white", [[PLAY_BUTTON_X+TILE_SIZE//4, PLAY_BUTTON_Y+TILE_SIZE//4], [PLAY_BUTTON_X+TILE_SIZE-TILE_SIZE//4, PLAY_BUTTON_Y+TILE_SIZE//2], [PLAY_BUTTON_X+TILE_SIZE//4, PLAY_BUTTON_Y+TILE_SIZE-TILE_SIZE//4]])
+
+    if (state.err_message != ""):
+        msg = letter_font.render(state.err_message, True, "red")
+        screen.blit(msg, (10, 400))
+
+###################################################################################
+
+############################### UI Interaction Code ###############################
+def handle_element_clicked():
+    play_button = pygame.Rect(PLAY_BUTTON_X, PLAY_BUTTON_Y, TILE_SIZE, TILE_SIZE)
+    pos = pygame.mouse.get_pos();
+    is_player_event = True
+    if (play_button.collidepoint(pos)):
+        play_turn()
+        is_player_event = False
+
+    return is_player_event
+
+###################################################################################
+
+################################## Gameplay Code ##################################
+
+def play_turn():
+    valid = score()
+
+    if (valid):
+        state.player_turn = 1 if state.player_turn == 0 else 0
+        state.err_message = ""
+
+def score():
+    tiles = []
+    for tile in state.tiles_placed_on_turn:
+        tiles.append((pygame.Vector2(tile), state.tiles_placed_on_turn[tile]))
+
+    prev_tile = tiles[0]
+    for tile in tiles:
+        if (tile[0].x == prev_tile[0].x):
+            vert = True
+
+
+
+
+###################################################################################
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -255,22 +330,26 @@ def main():
     small_font = pygame.font.Font(FONT_PATH, 20)
     letter_font = pygame.font.Font(FONT_PATH, 80)
 
-    player1 = Player(screen, letter_font, tiles_placed_on_turn)
+    global state
+    state = GameState()
+
+    global player1
+    player1 = Player(screen, small_font, letter_font, state.tiles_placed_on_turn)
 
     running = True
     clock = pygame.time.Clock()
 
     init_player(player1)
-    player1.state = PlayerState.MOVING
 
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if (event.type == pygame.MOUSEBUTTONDOWN):
+                is_player_event = handle_element_clicked()
                 left_mouse_pressed = pygame.mouse.get_pressed()[0]
                 right_mouse_pressed = pygame.mouse.get_pressed()[2]
-                if (left_mouse_pressed):
+                if (left_mouse_pressed and state.player_turn == 0 and is_player_event):
                     player1.handle_left_mouse_press()
 
         player1.Update()
@@ -278,6 +357,7 @@ def main():
         screen.fill(BG_COLOR)
         
         draw_board(screen, small_font, letter_font)
+        draw_ui(screen, letter_font)
         player1.Draw()
         
         pygame.display.flip()
