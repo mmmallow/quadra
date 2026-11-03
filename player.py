@@ -2,11 +2,11 @@ import pygame
 from common import *
 
 class Player:
-    bank = ["", "", "", "", "", "", ""]
-    held_letter = ""
-    score = 0
-
     def __init__(self, screen, small_font, letter_font, tiles_placed_on_turn):
+        self.bank = ["", "", "", "", "", "", ""]
+        self.held_letter = ""
+        self.score = 0
+
         self.screen = screen
         self.small_font = small_font
         self.letter_font = letter_font

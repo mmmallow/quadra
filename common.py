@@ -1,5 +1,8 @@
 import pygame
+import os
+import pickle
 from enum import Enum
+from word_tree import *
 
 SCREEN_WIDTH = 2160
 SCREEN_HEIGHT = 1215
@@ -91,6 +94,16 @@ class GameState:
 
     # Tiles placed during a player's turn. Temporary and is wiped after every turn
     tiles_placed_on_turn = {}
+
+    def __init__(self, current_letter, dict_file):
+        self.current_letter = current_letter
+
+        extension = os.path.splitext(dict_file)[1]
+        if (extension == ".txt"):
+            self.word_tree = WordTree(dict_file)
+        elif (extension == ".pkl"):
+            with open(dict_file, 'rb') as f:
+                self.word_tree = pickle.load(f)
 
 # This enum represents the score multiplier for a tile
 class Space(Enum):

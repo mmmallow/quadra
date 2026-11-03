@@ -1,19 +1,10 @@
 import pygame
 import random
+import os
 from player import *
 from common import *
 
-letter_bag = []
-for key in letter_distribution:
-    for i in range(0, letter_distribution[key]):
-        letter_bag.append(key)
 
-random.shuffle(letter_bag)
-current_letter = iter(letter_bag)
-
-def init_player(player):
-    for i in range(0,7):
-        player.bank[i] = next(current_letter)
 
 ############################### Draw Code ###############################
 
@@ -75,8 +66,11 @@ def draw_star(screen):
 
 def draw_ui(screen, small_font, letter_font):
     score1 = f"Player 1: {player1.score}"
+    score2 = f"Player 2: {player2.score}"
     text = letter_font.render(score1, True, "white")
     screen.blit(text, (10, 10))
+    text = letter_font.render(score2, True, "white")
+    screen.blit(text, (10, 80))
 
     pygame.draw.rect(screen, "grey45", (PLAY_BUTTON_X, PLAY_BUTTON_Y, TILE_SIZE, TILE_SIZE))
     pygame.draw.polygon(screen, "white", [[PLAY_BUTTON_X+TILE_SIZE//4, PLAY_BUTTON_Y+TILE_SIZE//4], [PLAY_BUTTON_X+TILE_SIZE-TILE_SIZE//4, PLAY_BUTTON_Y+TILE_SIZE//2], [PLAY_BUTTON_X+TILE_SIZE//4, PLAY_BUTTON_Y+TILE_SIZE-TILE_SIZE//4]])
@@ -97,11 +91,14 @@ def handle_element_clicked():
     reset_button = pygame.Rect(RESET_BUTTON_X, RESET_BUTTON_Y, TILE_SIZE, TILE_SIZE)
     pos = pygame.mouse.get_pos();
     is_player_event = True
-    if (play_button.collidepoint(pos) and state.player_turn == 0):
+    if (play_button.collidepoint(pos)):
         play_turn()
         is_player_event = False
     elif (reset_button.collidepoint(pos) and state.player_turn == 0):
         player1.Reset()
+        is_player_event = False
+    elif (reset_button.collidepoint(pos) and state.player_turn == 1):
+        player2.Reset()
         is_player_event = False
 
     return is_player_event
@@ -111,20 +108,69 @@ def handle_element_clicked():
 ################################## Gameplay ##################################
 
 def play_turn():
-    valid = score()
+    words = check_valid()
 
-    if (valid):
+    if (words):
+        # Valid move
+        for tile in state.tiles_placed_on_turn:
+            state.placed_tiles[(tile)] = state.tiles_placed_on_turn[tile]
+
+        state.tiles_placed_on_turn.clear()
+        state.is_first_move = False
+        print(words)
+
         state.player_turn = 1 if state.player_turn == 0 else 0
         state.err_message = ""
 
-def score():
+        print(player1.bank)
+        print(player2.bank)
+
+# FIX: Sometimes words appear backwards when placing one tile above already placed tiles
+#      Don't know if it is that way for any other orientations
+def check_tiles(ox, oy, dx, dy, letter):
+    # Find the first overall letter in the word
+    x = ox
+    y = oy
+    first_tile = None
+    while (True):
+        neighbor = (x+dx, y+dy)
+        if (neighbor in state.placed_tiles):
+            x = neighbor[0]
+            y = neighbor[1]
+        else:
+            first_tile = pygame.Vector2(x, y)
+            break
+
+    i = 0
+    counter = 0
+    x = first_tile.x
+    y = first_tile.y
+    word = ""
+    while (True):
+        if ((x, y) in state.placed_tiles):
+            word += state.placed_tiles[(x, y)]
+        elif (x == ox and y == oy):
+            word += letter
+            i += 1
+        else:
+            break
+
+        x -= dx
+        y -= dy
+        counter += 1
+        if (counter == 8):
+            state.err_message = "An error occurred"
+            return ""
+
+    return word
+
+def check_valid():
     if (len(state.tiles_placed_on_turn) == 0):
         state.err_message = "Must play a\nword"
-        return False
-
+        return []
     if (state.is_first_move and (7, 7) not in state.tiles_placed_on_turn):
         state.err_message = "Middle tile\nmust be used\non first turn"
-        return False
+        return []
 
     tiles = []
     for tile in state.tiles_placed_on_turn:
@@ -134,20 +180,28 @@ def score():
     horiz = 0
     vert  = 0
     if (len(tiles) > 1):
-        horiz = 1 if all(item[0].y == tiles[0][0].y for item in tiles) else 0
-        vert  = 1 if all(item[0].x == tiles[0][0].x for item in tiles) else 0
+        horiz = 1 if all(tile[0].y == tiles[0][0].y for tile in tiles) else 0
+        vert  = 1 if all(tile[0].x == tiles[0][0].x for tile in tiles) else 0
 
         if (horiz == 0 and vert == 0):
             state.err_message = "Tiles must be\nin a straight\nline"
-            return False
+            return []
+    else:
+        if (((tiles[0][0].x+1, tiles[0][0].y) in state.placed_tiles) or ((tiles[0][0].x-1, tiles[0][0].y) in state.placed_tiles)):
+            horiz = 1
+        elif (((tiles[0][0].x, tiles[0][0].y+1) in state.placed_tiles) or ((tiles[0][0].x, tiles[0][0].y-1) in state.placed_tiles)):
+            vert = 1
+        else:
+            state.err_message = "Must use\ntiles already\nplaced"
+            return []
 
     if (horiz):
         tiles.sort(key=lambda x: x[0].x)
     else:
         tiles.sort(key=lambda x: x[0].y)
 
-    score = 0
-    word = []
+    words = []
+    word = ""
 
     # Find the first overall letter in the word
     x = tiles[0][0].x
@@ -166,11 +220,13 @@ def score():
     counter = 0
     x = first_tile.x
     y = first_tile.y
+    used_placed_tiles = False
     while (True):
         if ((x, y) in state.placed_tiles):
-            word.append(state.placed_tiles[(x, y)])
+            word += state.placed_tiles[(x, y)]
+            used_placed_tiles = True
         elif (i < len(tiles) and x == tiles[i][0].x and y == tiles[i][0].y):
-            word.append(tiles[i][1])
+            word += tiles[i][1]
             i += 1
         else:
             break
@@ -179,17 +235,93 @@ def score():
         y += vert
         counter += 1
         if (counter == 8):
-            break
+            state.err_message = "An error occurred"
+            return []
 
-
-    for tile in tiles:
-        state.placed_tiles[(tile[0].x, tile[0].y)] = tile[1]
-
-    state.tiles_placed_on_turn.clear()
-    state.is_first_move = False
     print(word)
+    if (not state.is_first_move and not used_placed_tiles):
+        state.err_message = "Must use\ntiles already\nplaced"
+        return []
 
-    return True
+    words.append(word)
+
+    # Check that tiles placed this turn form words with any other placed tiles
+    for tile in tiles:
+        x = int(tile[0].x)
+        y = int(tile[0].y)
+        if ((x+1, y) in state.placed_tiles and not horiz):
+            new_word = check_tiles(x, y, 1, 0, tile[1])
+            if (new_word != ""):
+                words.append(new_word)
+            else:
+                state.err_message = "Invalid move"
+                return []
+        if ((x-1, y) in state.placed_tiles and not horiz):
+            new_word = check_tiles(x, y, -1, 0, tile[1])
+            if (new_word != ""):
+                words.append(new_word)
+            else:
+                state.err_message = "Invalid move"
+                return []
+
+        if ((x, y+1) in state.placed_tiles and not vert):
+            new_word = check_tiles(x, y, 0, 1, tile[1])
+            if (new_word != ""):
+                words.append(new_word)
+            else:
+                state.err_message = "Invalid move"
+                return []
+        if ((x, y-1) in state.placed_tiles and not vert):
+            new_word = check_tiles(x, y, 0, -1, tile[1])
+            if (new_word != ""):
+                words.append(new_word)
+            else:
+                state.err_message = "Invalid move"
+                return []
+
+    for w in words:
+        valid = state.word_tree.check_word(w)
+        if (not valid):
+            state.err_message = f"Invalid word:\n{w}"
+            return []
+
+    score = 0
+    multiplier = 1
+    # Score words
+    # First word in words will always be made of placed tiles
+    for tile in tiles:
+        x = int(tile[0].x)
+        y = int(tile[0].y)
+        space = Space(spaces[y][x])
+        match (space):
+            case Space.DOUBLE_LETTER:
+                score += letter_values[tile[1]] * 2
+            case Space.TRIPLE_LETTER:
+                score += letter_values[tile[1]] * 3
+            case Space.DOUBLE_WORD:
+                score += letter_values[tile[1]]
+                multiplier = 2
+            case Space.TRIPLE_WORD:
+                score += letter_values[tile[1]]
+                multiplier = 3
+            case _:
+                score += letter_values[tile[1]]
+
+    score *= multiplier
+    if state.player_turn == 0:
+        player1.score += score
+        init_player(player1)
+    else:
+        player2.score += score
+        init_player(player2)
+
+    return words
+
+
+def init_player(player):
+    for i in range(0,7):
+        if (player.bank[i] == ""):
+            player.bank[i] = next(state.current_letter)
 
 
 ##############################################################################
@@ -202,16 +334,30 @@ def main():
     small_font = pygame.font.Font(FONT_PATH, 20)
     letter_font = pygame.font.Font(FONT_PATH, 80)
 
+    letter_bag = []
+    for key in letter_distribution:
+        for i in range(0, letter_distribution[key]):
+            letter_bag.append(key)
+
+    random.shuffle(letter_bag)
+    current_letter = iter(letter_bag)
+
     global state
-    state = GameState()
+    if (os.path.exists("word_tree_obj.pkl")):
+        state = GameState(current_letter, "word_tree_obj.pkl")
+    else:
+        state = GameState(current_letter, "words.txt")
 
     global player1
     player1 = Player(screen, small_font, letter_font, state.tiles_placed_on_turn)
+    global player2
+    player2 = Player(screen, small_font, letter_font, state.tiles_placed_on_turn)
 
     running = True
     clock = pygame.time.Clock()
 
     init_player(player1)
+    init_player(player2)
 
     while running:
         for event in pygame.event.get():
@@ -223,14 +369,17 @@ def main():
                 right_mouse_pressed = pygame.mouse.get_pressed()[2]
                 if (left_mouse_pressed and state.player_turn == 0 and is_player_event):
                     player1.handle_left_mouse_press()
+                elif (left_mouse_pressed and state.player_turn == 1 and is_player_event):
+                    player2.handle_left_mouse_press()
 
-        player1.Update()
-        
         screen.fill(BG_COLOR)
         
         draw_board(screen, small_font, letter_font)
         draw_ui(screen, small_font, letter_font)
-        player1.Draw()
+        if (state.player_turn == 0):
+            player1.Draw()
+        else:
+            player2.Draw()
         
         pygame.display.flip()
         clock.tick(60)
