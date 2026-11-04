@@ -25,6 +25,8 @@ class WordTree:
         while (i < len(word)):
             result = list(filter(lambda x: x.letter == word[i], cur_children))
             if (len(result)):
+                if (i == len(word)-1):
+                    result[0].is_word_end = True
                 cur_children = result[0].children
                 i += 1
             else:

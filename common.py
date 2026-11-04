@@ -20,6 +20,11 @@ PLAY_BUTTON_X = SCREEN_WIDTH - SCREEN_WIDTH//8
 PLAY_BUTTON_Y = SCREEN_HEIGHT - SCREEN_HEIGHT//6
 RESET_BUTTON_X = PLAY_BUTTON_X + TILE_SIZE + TILE_SIZE*.25
 RESET_BUTTON_Y = PLAY_BUTTON_Y
+SKIP_BUTTON_X = RESET_BUTTON_X + TILE_SIZE + TILE_SIZE*.25
+SKIP_BUTTON_Y = PLAY_BUTTON_Y
+
+BANK_SIZE = 7
+BINGO_BONUS = 50
 
 PLAYER_BANK_PADDING = BOARD_SIZE // 7
 PLAYER_BANK_Y = BOARD_Y + BOARD_SIZE + 20
@@ -95,6 +100,9 @@ class GameState:
     # Tiles placed during a player's turn. Temporary and is wiped after every turn
     tiles_placed_on_turn = {}
 
+    # Tiles in to be removed from player's letter bank
+    discard_pile = []
+
     def __init__(self, current_letter, dict_file):
         self.current_letter = current_letter
 
@@ -122,13 +130,13 @@ spaces: Space = [
     [0,0,0,0,3,0,0,0,0,0,3,0,0,0,0],
     [0,2,0,0,0,2,0,0,0,2,0,0,0,2,0], 
     [0,0,1,0,0,0,1,0,1,0,0,0,1,0,0],
-    [4,0,0,1,0,0,0,0,0,0,0,1,0,0,4],
+    [4,0,0,1,0,0,0,3,0,0,0,1,0,0,4],
     [0,0,1,0,0,0,1,0,1,0,0,0,1,0,0],
     [0,2,0,0,0,2,0,0,0,2,0,0,0,2,0],
     [0,0,0,0,3,0,0,0,0,0,3,0,0,0,0],
     [1,0,0,3,0,0,0,1,0,0,0,3,0,0,1],
     [0,0,3,0,0,0,1,0,1,0,0,0,3,0,0],
-    [0,3,0,0,0,2,0,0,0,2,0,0,0,2,0],
+    [0,3,0,0,0,2,0,0,0,2,0,0,0,3,0],
     [4,0,0,1,0,0,0,4,0,0,0,1,0,0,4]
 ]
 

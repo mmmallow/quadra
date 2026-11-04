@@ -2,15 +2,17 @@ import pygame
 from common import *
 
 class Player:
-    def __init__(self, screen, small_font, letter_font, tiles_placed_on_turn):
+    def __init__(self, screen, small_font, letter_font, tiles_placed_on_turn, discard_pile):
         self.bank = ["", "", "", "", "", "", ""]
         self.held_letter = ""
         self.score = 0
+        self.is_done = False
 
         self.screen = screen
         self.small_font = small_font
         self.letter_font = letter_font
         self.tiles_placed_on_turn = tiles_placed_on_turn
+        self.discard_pile = discard_pile
 
     def Update(self):
         right_mouse_pressed = pygame.mouse.get_pressed()[2]
@@ -36,7 +38,12 @@ class Player:
         for tile in self.tiles_placed_on_turn:
             index = self.bank.index("")
             self.bank[index] = self.tiles_placed_on_turn[tile]
+
+        for tile in self.discard_pile:
+            index = self.bank.index("")
+            self.bank[index] = tile
         self.tiles_placed_on_turn.clear()
+        self.discard_pile.clear()
 
     def handle_left_mouse_press(self):
         mouse_pos = pygame.mouse.get_pos()
@@ -74,4 +81,13 @@ class Player:
                 self.bank[index] = self.held_letter
                 self.held_letter = ""
 
+    def handle_right_mouse_press(self):
+        mouse_pos = pygame.mouse.get_pos()
+        if (self.held_letter == ""):
+            for i in range(0, 7):
+                tile = pygame.Rect(BOARD_X + i*(PLAYER_BANK_PADDING)+43, PLAYER_BANK_Y, TILE_SIZE, TILE_SIZE)
+                if (tile.collidepoint(mouse_pos)):
+                    self.discard_pile.append(self.bank[i])
+                    self.bank[i] = ""
+                    break
 
