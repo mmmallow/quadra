@@ -35,6 +35,7 @@ class WordTree:
                     is_word_end = True
                 cur_children.append(LetterNode(word[i], is_word_end))
 
+    # TODO: Change to recursive function and/or use queue to account for blank tiles
     def check_word(self, word):
         cur_children = self.head
         i = 0

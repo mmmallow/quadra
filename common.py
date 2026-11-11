@@ -22,6 +22,8 @@ RESET_BUTTON_X = PLAY_BUTTON_X + TILE_SIZE + TILE_SIZE*.25
 RESET_BUTTON_Y = PLAY_BUTTON_Y
 SKIP_BUTTON_X = RESET_BUTTON_X + TILE_SIZE + TILE_SIZE*.25
 SKIP_BUTTON_Y = PLAY_BUTTON_Y
+DONE_BUTTON_X = RESET_BUTTON_X
+DONE_BUTTON_Y = RESET_BUTTON_Y + TILE_SIZE + TILE_SIZE*.25
 
 BANK_SIZE = 7
 BINGO_BONUS = 50
@@ -92,7 +94,11 @@ letter_values = {
 class GameState:
     player_turn = 0
     err_message = ""
+    win_message = ""
     is_first_move = True
+    letter_bag_empty = False
+    turns_without_move = 0
+    game_over = False
     # Stores all tiles placed by the players as index in spaces : letter
     # (0, 0): "A"
     placed_tiles = {}

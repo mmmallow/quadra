@@ -2,7 +2,7 @@ import pygame
 from common import *
 
 class Player:
-    def __init__(self, screen, small_font, letter_font, tiles_placed_on_turn, discard_pile):
+    def __init__(self, screen, small_font, letter_font, tiles_placed_on_turn, discard_pile, placed_tiles):
         self.bank = ["", "", "", "", "", "", ""]
         self.held_letter = ""
         self.score = 0
@@ -13,6 +13,7 @@ class Player:
         self.letter_font = letter_font
         self.tiles_placed_on_turn = tiles_placed_on_turn
         self.discard_pile = discard_pile
+        self.placed_tiles = placed_tiles
 
     def Update(self):
         right_mouse_pressed = pygame.mouse.get_pressed()[2]
@@ -74,8 +75,9 @@ class Player:
                 if ((board_x, board_y) in self.tiles_placed_on_turn):
                     index = self.bank.index("")
                     self.bank[index] = self.tiles_placed_on_turn[(board_x, board_y)]
-                self.tiles_placed_on_turn[(board_x, board_y)] = self.held_letter
-                self.held_letter = ""
+                if ((board_x, board_y) not in self.placed_tiles):
+                    self.tiles_placed_on_turn[(board_x, board_y)] = self.held_letter
+                    self.held_letter = ""
             else:
                 index = self.bank.index("")
                 self.bank[index] = self.held_letter

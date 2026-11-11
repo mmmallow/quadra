@@ -1,7 +1,6 @@
 import pygame
 import random
 import os
-import sys
 from player import *
 from common import *
 
@@ -89,8 +88,16 @@ def draw_ui(screen, small_font, letter_font):
     text = small_font.render("SKIP", True, "white")
     screen.blit(text, (SKIP_BUTTON_X+TILE_SIZE//6, SKIP_BUTTON_Y+TILE_SIZE//3))
 
+    pygame.draw.rect(screen, "grey45", (DONE_BUTTON_X, DONE_BUTTON_Y, TILE_SIZE, TILE_SIZE))
+    text = small_font.render("DONE", True, "white")
+    screen.blit(text, (DONE_BUTTON_X+TILE_SIZE//6, DONE_BUTTON_Y+TILE_SIZE//3))
+
     if (state.err_message != ""):
         msg = letter_font.render(state.err_message, True, "red")
+        screen.blit(msg, (10, 400))
+
+    if (state.game_over):
+        msg = letter_font.render(state.win_message, True, "white")
         screen.blit(msg, (10, 400))
 
 def draw_discard_pile(screen, small_font, letter_font):
@@ -115,6 +122,7 @@ def handle_element_clicked():
     play_button = pygame.Rect(PLAY_BUTTON_X, PLAY_BUTTON_Y, TILE_SIZE, TILE_SIZE)
     reset_button = pygame.Rect(RESET_BUTTON_X, RESET_BUTTON_Y, TILE_SIZE, TILE_SIZE)
     skip_button = pygame.Rect(SKIP_BUTTON_X, SKIP_BUTTON_Y, TILE_SIZE, TILE_SIZE)
+    done_button = pygame.Rect(DONE_BUTTON_X, DONE_BUTTON_Y, TILE_SIZE, TILE_SIZE)
     pos = pygame.mouse.get_pos();
     is_player_event = True
     if (play_button.collidepoint(pos)):
@@ -132,6 +140,12 @@ def handle_element_clicked():
     elif (skip_button.collidepoint(pos) and state.player_turn == 1):
         skip_turn(player2)
         is_player_event = False
+    elif (done_button.collidepoint(pos) and state.player_turn == 0):
+        player_is_done(player1)
+        is_player_event = False
+    elif (done_button.collidepoint(pos) and state.player_turn == 1):
+        player_is_done(player2)
+        is_player_event = False
 
     return is_player_event
 
@@ -139,10 +153,19 @@ def handle_element_clicked():
 
 ################################## Gameplay ##################################
 
+def player_is_done(player):
+    state.discard_pile.clear()
+    state.player_turn = 0 if state.player_turn else 1
+    state.turns_without_move += 1
+    player.is_done = True
+    check_game_over()
+
 def skip_turn(player):
     state.discard_pile.clear()
     init_player(player)
     state.player_turn = 0 if state.player_turn else 1
+    state.turns_without_move += 1
+    check_game_over()
 
 def play_turn():
     words = check_valid()
@@ -162,8 +185,14 @@ def play_turn():
         state.tiles_placed_on_turn.clear()
         state.is_first_move = False
 
-        state.player_turn = 1 if state.player_turn == 0 else 0
+        if (player == player1 and not player2.is_done):
+            state.player_turn = 1
+        elif (player == player2 and not player1.is_done):
+            state.player_turn = 0
         state.err_message = ""
+        state.turns_without_move = 0
+
+    check_game_over()
 
 
 def get_letter(cell):
@@ -293,11 +322,27 @@ def score_move(words):
         score += BINGO_BONUS
     return score
 
-
 def init_player(player):
     for i in range(0,BANK_SIZE):
         if (player.bank[i] == ""):
-            player.bank[i] = next(state.current_letter, "")
+            try:
+                player.bank[i] = next(state.current_letter)
+            except:
+                state.letter_bag_empty = True
+
+def check_game_over():
+    if (state.turns_without_move >= 6):
+        end_game()
+    elif (player1.is_done and player2.is_done):
+        end_game()
+    elif (state.letter_bag_empty and all(c == "" for c in player1.bank) and all(c == "" for c in player2.bank)):
+        end_game()
+
+def end_game():
+    state.game_over = True
+    state.err_message = ""
+    winner = "Player 1" if player1.score > player2.score else "Player 2"
+    state.win_message = winner + " wins!"
 
 
 ##############################################################################
@@ -310,6 +355,7 @@ def main():
     small_font = pygame.font.Font(FONT_PATH, 20)
     letter_font = pygame.font.Font(FONT_PATH, 80)
 
+    global letter_bag
     letter_bag = []
     for key in letter_distribution:
         for i in range(0, letter_distribution[key]):
@@ -325,9 +371,9 @@ def main():
         state = GameState(current_letter, "dictionary.txt")
 
     global player1
-    player1 = Player(screen, small_font, letter_font, state.tiles_placed_on_turn, state.discard_pile)
+    player1 = Player(screen, small_font, letter_font, state.tiles_placed_on_turn, state.discard_pile, state.placed_tiles)
     global player2
-    player2 = Player(screen, small_font, letter_font, state.tiles_placed_on_turn, state.discard_pile)
+    player2 = Player(screen, small_font, letter_font, state.tiles_placed_on_turn, state.discard_pile, state.placed_tiles)
 
     running = True
     clock = pygame.time.Clock()
@@ -339,7 +385,7 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            if (event.type == pygame.MOUSEBUTTONDOWN):
+            if (event.type == pygame.MOUSEBUTTONDOWN and not state.game_over):
                 is_player_event = handle_element_clicked()
                 left_mouse_pressed = pygame.mouse.get_pressed()[0]
                 right_mouse_pressed = pygame.mouse.get_pressed()[2]
