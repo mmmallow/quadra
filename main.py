@@ -186,6 +186,7 @@ def play_turn():
             for tile in state.discard_pile:
                 index = player.bank.index("")
                 player.bank[index] = tile
+            state.discard_pile.clear()
         init_player(player)
 
         for tile in state.tiles_placed_on_turn:
