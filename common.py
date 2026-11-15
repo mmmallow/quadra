@@ -1,13 +1,16 @@
 import pygame
 import os
 import pickle
+from dotenv import load_dotenv
 from enum import Enum
 from word_tree import *
+
+load_dotenv()
 
 SCREEN_WIDTH = 2160
 SCREEN_HEIGHT = 1215
 
-FONT_PATH = '/home/evan/.local/share/fonts/InconsolataNerdFont-Regular.ttf'
+FONT_PATH = os.getenv("FONT_PATH")
 
 TILE_SIZE = 72
 TILE_COLOR = (160, 120, 80)
