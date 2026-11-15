@@ -15,12 +15,6 @@ class Player:
         self.discard_pile = discard_pile
         self.placed_tiles = placed_tiles
 
-    def Update(self):
-        right_mouse_pressed = pygame.mouse.get_pressed()[2]
-
-        if (right_mouse_pressed):
-            print("r")
-
     def Draw(self):
         for i in range(0, 7):
             if (self.bank[i] != ""):
@@ -46,7 +40,7 @@ class Player:
         self.tiles_placed_on_turn.clear()
         self.discard_pile.clear()
 
-    def handle_left_mouse_press(self):
+    def HandleLeftMousePress(self):
         mouse_pos = pygame.mouse.get_pos()
         if (self.held_letter == ""):
             for i in range(0,7):
@@ -83,7 +77,7 @@ class Player:
                 self.bank[index] = self.held_letter
                 self.held_letter = ""
 
-    def handle_right_mouse_press(self):
+    def HandleRightMousePress(self):
         mouse_pos = pygame.mouse.get_pos()
         if (self.held_letter == ""):
             for i in range(0, 7):

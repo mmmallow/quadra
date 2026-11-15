@@ -1,8 +1,9 @@
 import pygame
 import random
 import os
-from player import *
-from common import *
+from player    import *
+from ai_player import *
+from common    import *
 
 
 
@@ -162,25 +163,35 @@ def player_is_done(player):
 
 def skip_turn(player):
     state.discard_pile.clear()
+    state.err_message = ""
     init_player(player)
     state.player_turn = 0 if state.player_turn else 1
     state.turns_without_move += 1
     check_game_over()
 
 def play_turn():
-    words = check_valid()
+    words = []
+
+    if (len(state.tiles_placed_on_turn) == 0):
+        skip_turn(player2 if state.player_turn else player1)
+    else:
+        words = state.evaluator.Evaluate()
 
     if (words):
         # Valid move. Score before the tiles are committed, since premium
         # squares only count for tiles placed this turn
         player = player1 if state.player_turn == 0 else player2
-        player.score += score_move(words)
+        player.score += state.evaluator.Score(words)
+        if (len(state.discard_pile) > 0):
+            for tile in state.discard_pile:
+                index = player.bank.index("")
+                player.bank[index] = tile
         init_player(player)
 
         for tile in state.tiles_placed_on_turn:
             state.placed_tiles[(tile)] = state.tiles_placed_on_turn[tile]
 
-        print([cells_to_word(word) for word in words])
+        print([cells_to_word(state.placed_tiles, state.tiles_placed_on_turn, word) for word in words])
 
         state.tiles_placed_on_turn.clear()
         state.is_first_move = False
@@ -189,138 +200,12 @@ def play_turn():
             state.player_turn = 1
         elif (player == player2 and not player1.is_done):
             state.player_turn = 0
+            player2.state = AIState.WAITING
+
         state.err_message = ""
         state.turns_without_move = 0
 
     check_game_over()
-
-
-def get_letter(cell):
-    if (cell in state.placed_tiles):
-        return state.placed_tiles[cell]
-    return state.tiles_placed_on_turn[cell]
-
-
-# Returns the cells of the word running through (x, y), in reading order.
-# (dx, dy) must point in the reading direction: (1, 0) across or (0, 1) down
-def get_word_cells(x, y, dx, dy):
-    def has_tile(cell):
-        return cell in state.placed_tiles or cell in state.tiles_placed_on_turn
-
-    while has_tile((x - dx, y - dy)):
-        x -= dx
-        y -= dy
-
-    cells = []
-    while has_tile((x, y)):
-        cells.append((x, y))
-        x += dx
-        y += dy
-
-    return cells
-
-
-def cells_to_word(cells):
-    return "".join(get_letter(cell) for cell in cells)
-
-
-# Returns every word formed this turn as a list of cells, with the main word
-# first. Returns [] and sets the error message if the move isn't legal
-def check_valid():
-    if (len(state.tiles_placed_on_turn) == 0):
-        state.err_message = "Must play a\nword"
-        return []
-    if (state.is_first_move and (7, 7) not in state.tiles_placed_on_turn):
-        state.err_message = "Middle tile\nmust be used\non first turn"
-        return []
-
-    tiles = sorted(state.tiles_placed_on_turn)
-
-    if (any(tile in state.placed_tiles for tile in tiles)):
-        state.err_message = "Space already\ntaken"
-        return []
-
-    # Check if the placed tiles are in a line
-    horiz = 0
-    vert  = 0
-    if (len(tiles) > 1):
-        horiz = 1 if all(tile[1] == tiles[0][1] for tile in tiles) else 0
-        vert  = 1 if all(tile[0] == tiles[0][0] for tile in tiles) else 0
-
-        if (horiz == 0 and vert == 0):
-            state.err_message = "Tiles must be\nin a straight\nline"
-            return []
-    else:
-        x, y = tiles[0]
-        if (((x+1, y) in state.placed_tiles) or ((x-1, y) in state.placed_tiles)):
-            horiz = 1
-        elif (((x, y+1) in state.placed_tiles) or ((x, y-1) in state.placed_tiles)):
-            vert = 1
-        else:
-            state.err_message = "Must use\ntiles already\nplaced"
-            return []
-
-    main_word = get_word_cells(tiles[0][0], tiles[0][1], horiz, vert)
-
-    if (any(tile not in main_word for tile in tiles)):
-        state.err_message = "Tiles must\nnot have gaps"
-        return []
-
-    if (len(main_word) < 2):
-        state.err_message = "Words must\nbe at least\n2 letters\nlong"
-        return []
-
-    words = [main_word]
-
-    # Check that tiles placed this turn form words with any other placed tiles
-    for x, y in tiles:
-        cross_word = get_word_cells(x, y, vert, horiz)
-        if (len(cross_word) > 1):
-            words.append(cross_word)
-
-    # The move can connect through the main word or through any cross word
-    connected = any(cell in state.placed_tiles for word in words for cell in word)
-    if (not state.is_first_move and not connected):
-        state.err_message = "Must use\ntiles already\nplaced"
-        return []
-
-    for cells in words:
-        word = cells_to_word(cells)
-        if (not state.word_tree.check_word(word)):
-            state.err_message = f"Invalid word:\n{word}"
-            return []
-
-    return words
-
-
-# Every letter in a word counts, but premium squares only apply to tiles placed
-# this turn. A new tile's premium applies to each word it's part of
-def score_word(cells):
-    score = 0
-    multiplier = 1
-    for cell in cells:
-        value = letter_values[get_letter(cell)]
-        if (cell in state.tiles_placed_on_turn):
-            x, y = cell
-            match (Space(spaces[y][x])):
-                case Space.DOUBLE_LETTER:
-                    value *= 2
-                case Space.TRIPLE_LETTER:
-                    value *= 3
-                case Space.DOUBLE_WORD:
-                    multiplier *= 2
-                case Space.TRIPLE_WORD:
-                    multiplier *= 3
-        score += value
-
-    return score * multiplier
-
-
-def score_move(words):
-    score = sum(score_word(cells) for cells in words)
-    if (len(state.tiles_placed_on_turn) == BANK_SIZE):
-        score += BINGO_BONUS
-    return score
 
 def init_player(player):
     for i in range(0,BANK_SIZE):
@@ -373,7 +258,8 @@ def main():
     global player1
     player1 = Player(screen, small_font, letter_font, state.tiles_placed_on_turn, state.discard_pile, state.placed_tiles)
     global player2
-    player2 = Player(screen, small_font, letter_font, state.tiles_placed_on_turn, state.discard_pile, state.placed_tiles)
+    #player2 = Player(screen, small_font, letter_font, state.tiles_placed_on_turn, state.discard_pile, state.placed_tiles)
+    player2 = AIPlayer(state.tiles_placed_on_turn, state.discard_pile, state.placed_tiles, state.evaluator)
 
     running = True
     clock = pygame.time.Clock()
@@ -390,14 +276,19 @@ def main():
                 left_mouse_pressed = pygame.mouse.get_pressed()[0]
                 right_mouse_pressed = pygame.mouse.get_pressed()[2]
                 if (left_mouse_pressed and state.player_turn == 0 and is_player_event):
-                    player1.handle_left_mouse_press()
+                    player1.HandleLeftMousePress()
                 elif (left_mouse_pressed and state.player_turn == 1 and is_player_event):
-                    player2.handle_left_mouse_press()
+                    player2.HandleLeftMousePress()
 
                 if (right_mouse_pressed and state.player_turn == 0 and is_player_event):
-                    player1.handle_right_mouse_press()
+                    player1.HandleRightMousePress()
                 elif (right_mouse_pressed and state.player_turn == 1 and is_player_event):
-                    player2.handle_right_mouse_press()
+                    player2.HandleRightMousePress()
+
+        if (state.player_turn == 1 and player2.state == AIState.WAITING):
+            player2.PlayTurn()
+        elif (state.player_turn == 1 and (player2.state == AIState.DONE_MOVING or player1.is_done)):
+            play_turn()
 
         screen.fill(BG_COLOR)
         

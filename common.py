@@ -31,6 +31,16 @@ BINGO_BONUS = 50
 PLAYER_BANK_PADDING = BOARD_SIZE // 7
 PLAYER_BANK_Y = BOARD_Y + BOARD_SIZE + 20
 
+# Custom pygame events
+AI_SHOULD_PLAY = pygame.USEREVENT+1
+ai_should_play = pygame.event.Event(AI_SHOULD_PLAY, message="AI playing turn")
+
+AI_DONE_TURN = pygame.USEREVENT+1
+ai_done_turn = pygame.event.Event(AI_DONE_TURN, message="AI done playing turn")
+
+
+letters = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+
 letter_distribution = {
     "A":     9,
     "B":     2,
@@ -111,13 +121,10 @@ class GameState:
 
     def __init__(self, current_letter, dict_file):
         self.current_letter = current_letter
+        # Imported here to avoid a circular import (evaluator imports common)
+        from evaluator import Evaluator
+        self.evaluator = Evaluator(self.tiles_placed_on_turn, self.placed_tiles, dict_file, self)
 
-        extension = os.path.splitext(dict_file)[1]
-        if (extension == ".txt"):
-            self.word_tree = WordTree(dict_file)
-        elif (extension == ".pkl"):
-            with open(dict_file, 'rb') as f:
-                self.word_tree = pickle.load(f)
 
 # This enum represents the score multiplier for a tile
 class Space(Enum):
@@ -146,6 +153,28 @@ spaces: Space = [
     [4,0,0,1,0,0,0,4,0,0,0,1,0,0,4]
 ]
 
+def get_letter(placed_tiles, tiles_placed_on_turn, cell):
+    if (cell in placed_tiles):
+        return placed_tiles[cell]
+    return tiles_placed_on_turn[cell]
+
+# Returns the cells of the word running through (x, y), in reading order.
+# (dx, dy) must point in the reading direction: (1, 0) across or (0, 1) down
+def get_word_cells(placed_tiles, tiles_placed_on_turn, x, y, dx, dy):
+    def has_tile(cell):
+        return cell in placed_tiles or cell in tiles_placed_on_turn
+
+    while has_tile((x - dx, y - dy)):
+        x -= dx
+        y -= dy
+
+    cells = []
+    while has_tile((x, y)):
+        cells.append((x, y))
+        x += dx
+        y += dy
+
+    return cells
 
 def draw_tile(screen, small_font, letter_font, color, letter, x, y):
     if (color != None):
@@ -156,8 +185,18 @@ def draw_tile(screen, small_font, letter_font, color, letter, x, y):
     value = small_font.render(str(letter_values[letter]), True, "black")
     screen.blit(value, (x+TILE_SIZE-TILE_SIZE//6, y+TILE_SIZE-TILE_SIZE//3))
 
+def cells_to_word(placed_tiles, tiles_placed_on_turn, cells):
+    return "".join(get_letter(placed_tiles, tiles_placed_on_turn, cell) for cell in cells)
+
 def get_board_pos_px(i, j):
     x = BOARD_X + i*TILE_SIZE
     y = BOARD_Y + j*TILE_SIZE
 
     return (x,y)
+
+def on_board(pos):
+    x, y = pos
+    if (x >= 0 and x < 15 and y >= 0 and y < 15):
+        return True
+
+    return False

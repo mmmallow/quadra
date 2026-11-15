@@ -1,5 +1,6 @@
 import pickle
 import os
+import sys
 
 class LetterNode:
     def __init__(self, letter, is_word_end):
@@ -9,7 +10,7 @@ class LetterNode:
 
 class WordTree:
     def __init__(self, file_name):
-        self.head = []
+        self.head = LetterNode("", False)
 
         with open(file_name, 'r') as f:
             for line in f:
@@ -20,7 +21,7 @@ class WordTree:
             pickle.dump(self, f)
 
     def add_word(self, word):
-        cur_children = self.head
+        cur_children = self.head.children
         i = 0
         while (i < len(word)):
             result = list(filter(lambda x: x.letter == word[i], cur_children))
@@ -37,7 +38,7 @@ class WordTree:
 
     # TODO: Change to recursive function and/or use queue to account for blank tiles
     def check_word(self, word):
-        cur_children = self.head
+        cur_children = self.head.children
         i = 0
         while (i < len(word) and len(cur_children) != 0):
             result = list(filter(lambda x: x.letter == word[i], cur_children))
@@ -53,7 +54,7 @@ class WordTree:
                 return False
 
     def print_tree(self):
-        cur_children = self.head
+        cur_children = self.head.children
         while (len(cur_children) != 0):
             print(cur_children[0].letter)
             cur_children = cur_children[0].children
