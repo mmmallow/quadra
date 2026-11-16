@@ -168,7 +168,7 @@ def main():
 
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption('Scrabble')
+    pygame.display.set_caption('Quadra')
 
     small_font = pygame.font.Font(FONT_PATH, SMALL_FONT_SIZE)
     letter_font = pygame.font.Font(FONT_PATH, LETTER_FONT_SIZE)
