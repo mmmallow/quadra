@@ -3,9 +3,8 @@ from common import *
 from button import Button
 from game_state import GameState
 from evaluator import Evaluator
-from event_listener import EventListener
 
-class GameManager(EventListener):
+class GameManager:
     def __init__(self, current_letter, dict_file):
         self.state = GameState(current_letter, dict_file)
         self.evaluator = Evaluator(self.state, dict_file)
@@ -20,30 +19,27 @@ class GameManager(EventListener):
         self.state.discard_pile.clear()
         self.state.SwitchPlayer()
         self.state.turns_without_move += 1
-        player.is_done = True
-        player.state = PlayerState.WAITING
+        player.state = PlayerState.DONE
         self.CheckGameOver()
 
     def Update(self):
         if (not self.state.game_over):
             player = self.state.GetCurrentPlayer()
-            if (player.state == PlayerState.DONE_MOVING):
-                self.PlayTurn()
-            elif (player.state == PlayerState.WAITING):
-                player.state = PlayerState.MOVING
-            elif (player.state == PlayerState.MOVING):
-                player.PlayTurn()
+            match (player.state):
+                case PlayerState.DONE_MOVING:
+                    self.PlayTurn()
+                case PlayerState.WAITING:
+                    player.state = PlayerState.MOVING
+                case PlayerState.MOVING:
+                    player.PlayTurn()
+                case PlayerState.SKIP_MOVE:
+                    self.SkipTurn()
+                case PlayerState.DONE:
+                    self.PlayerIsDone()
 
     def BoardCollide(self, pos):
         board = pygame.Rect(BOARD_X, BOARD_Y, BOARD_SIZE, BOARD_SIZE)
         return board.collidepoint(pos)
-
-    def Listen(self, event, data):
-        match (event):
-            case "skip_press":
-                self.SkipTurn()
-            case "done_press":
-                self.PlayerIsDone()
 
     def SkipTurn(self):
         player = self.state.GetCurrentPlayer()
@@ -106,7 +102,7 @@ class GameManager(EventListener):
     def CheckGameOver(self):
         if (self.state.turns_without_move >= 6):
             self.EndGame()
-        elif (self.state.players[0].is_done and self.state.players[1].is_done):
+        elif (self.state.players[0].state == PlayerState.DONE and self.state.players[1].state == PlayerState.DONE):
             self.EndGame()
         elif (self.state.letter_bag_empty and all(c == "" for c in self.state.players[0].bank.bank) and all(c == "" for c in self.state.players[1].bank.bank)):
             self.EndGame()

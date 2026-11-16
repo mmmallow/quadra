@@ -9,9 +9,7 @@ class Player(EventListener):
         self.bank = Bank()
         self.held_letter = ""
         self.score = 0
-        self.is_done = False
         self.state = PlayerState.WAITING
-        self.debounce_time = 0
 
         self.screen = screen
         self.small_font = small_font
@@ -36,12 +34,14 @@ class Player(EventListener):
                 self.state = PlayerState.DONE_MOVING
             case "reset_press":
                 self.Reset()
+            case "skip_press":
+                self.state = PlayerState.SKIP_MOVE
+            case "done_press":
+                self.state = PlayerState.DONE
             case "bank_left_mouse":
                 self.HandleLeftMousePress()
             case "bank_right_mouse":
                 self.HandleRightMousePress()
-            case "board_press":
-                self.HandleLeftMousePress()
 
     def PlayTurn(self):
         pass
@@ -60,16 +60,6 @@ class Player(EventListener):
         self.discard_pile.clear()
 
     def HandleLeftMousePress(self):
-        '''
-        if (self.debounce_time == 0):
-            self.debounce_time = time.time()
-        else:
-            if (time.time()-self.debounce_time <= DEBOUNCE_TIME):
-                self.debounce_time = 0
-            else:
-                return
-        '''
-
         mouse_pos = pygame.mouse.get_pos()
         if (self.held_letter == ""):
             for i in range(0,7):

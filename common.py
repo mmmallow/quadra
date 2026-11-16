@@ -7,12 +7,10 @@ from word_tree import *
 
 load_dotenv()
 
-SCALE = 0.75
+SCALE = 1.0
 
 SCREEN_WIDTH = SCALE * 2160
 SCREEN_HEIGHT = SCALE * 1215
-
-DEBOUNCE_TIME = 200
 
 FONT_PATH = os.getenv("FONT_PATH")
 LETTER_FONT_SIZE = int(SCALE * 80)
@@ -132,6 +130,8 @@ class PlayerState(Enum):
     WAITING = 0
     MOVING = 1
     DONE_MOVING = 2
+    SKIP_MOVE = 3
+    DONE = 4
 
 spaces: Space = [
     [4,0,0,1,0,0,0,4,0,0,0,1,0,0,4],

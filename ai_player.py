@@ -8,11 +8,9 @@ class AIPlayer:
     def __init__(self, tiles_placed_on_turn, discard_pile, placed_tiles, evaluator):
         self.bank = Bank()
         self.score = 0
-        self.is_done = False
         self.state = PlayerState.WAITING
         self.highest_scoring_move = {}
         self.highest_score = 0
-        self.can_handle_ui = False
 
         self.tiles_placed_on_turn = tiles_placed_on_turn
         self.discard_pile = discard_pile

@@ -25,9 +25,9 @@ class GameState:
         return self.players[self.player_turn]
 
     def SwitchPlayer(self):
-        if (self.player_turn == 0 and not self.players[1].is_done):
+        if (self.player_turn == 0 and not self.players[1].state == PlayerState.DONE):
             self.player_turn = 1
-        elif (self.player_turn == 1 and not self.players[0].is_done):
+        elif (self.player_turn == 1 and not self.players[0].state == PlayerState.DONE):
             self.player_turn = 0
 
         self.players[self.player_turn].state = PlayerState.MOVING

@@ -34,6 +34,7 @@ def draw_board(screen, small_font, letter_font):
         for x in range(0, 15):
             text_color = "black"
             text = ""
+            text_bottom = ""
             pos = get_board_pos_px(x,y)
             if (x,y) in game.state.placed_tiles:
                 draw_tile(screen, small_font, letter_font, None, game.state.placed_tiles[(x,y)], pos[0], pos[1])
@@ -56,8 +57,13 @@ def draw_board(screen, small_font, letter_font):
                         text_color = "indianred2"
                         text = "Triple\n Word"
 
-                top = small_font.render(text, True, text_color)
-                screen.blit(top, (pos[0]+SCALE*7,pos[1]+SCALE*10))
+                draw_text(screen, small_font, SMALL_FONT_SIZE, text, text_color, (pos[0]+SCALE*7,pos[1]+SCALE*10))
+
+def draw_text(screen, font, font_size, text, text_color, pos):
+    split = text.split('\n')
+    for i in range(0, len(split)):
+        top = font.render(split[i], True, text_color)
+        screen.blit(top, (pos[0], pos[1]+(i*font_size+font_size*.25)))
 
 def draw_star(screen):
     middle_tile = pygame.Rect(BOARD_X - TILE_SIZE//2 + BOARD_SIZE//2, BOARD_Y - TILE_SIZE//2 + BOARD_SIZE//2, TILE_SIZE, TILE_SIZE)
@@ -73,35 +79,28 @@ def draw_ui(screen, small_font, letter_font):
     score2 = f"Player 2: {player2.score}"
 
     color = "white" if game.state.player_turn else "blue"
-    text = letter_font.render(score1, True, color)
-    screen.blit(text, (SCORE1_X, SCORE1_Y))
+    draw_text(screen, letter_font, LETTER_FONT_SIZE, score1, color, (SCORE1_X, SCORE1_Y))
 
     color = "blue" if game.state.player_turn else "white"
-    text = letter_font.render(score2, True, color)
-    screen.blit(text, (SCORE2_X, SCORE2_Y))
+    draw_text(screen, letter_font, LETTER_FONT_SIZE, score2, color, (SCORE2_X, SCORE2_Y))
 
     pygame.draw.rect(screen, "grey45", (PLAY_BUTTON_X, PLAY_BUTTON_Y, TILE_SIZE, TILE_SIZE))
     pygame.draw.polygon(screen, "white", [[PLAY_BUTTON_X+TILE_SIZE//4, PLAY_BUTTON_Y+TILE_SIZE//4], [PLAY_BUTTON_X+TILE_SIZE-TILE_SIZE//4, PLAY_BUTTON_Y+TILE_SIZE//2], [PLAY_BUTTON_X+TILE_SIZE//4, PLAY_BUTTON_Y+TILE_SIZE-TILE_SIZE//4]])
 
     pygame.draw.rect(screen, "grey45", (RESET_BUTTON_X, RESET_BUTTON_Y, TILE_SIZE, TILE_SIZE))
-    text = small_font.render("RESET", True, "white")
-    screen.blit(text, (RESET_BUTTON_X+TILE_SIZE//6, RESET_BUTTON_Y+TILE_SIZE//3))
+    draw_text(screen, small_font, SMALL_FONT_SIZE, "RESET", "white", (RESET_BUTTON_X+TILE_SIZE//6, RESET_BUTTON_Y+TILE_SIZE//3))
 
     pygame.draw.rect(screen, "grey45", (SKIP_BUTTON_X, SKIP_BUTTON_Y, TILE_SIZE, TILE_SIZE))
-    text = small_font.render("SKIP", True, "white")
-    screen.blit(text, (SKIP_BUTTON_X+TILE_SIZE//6, SKIP_BUTTON_Y+TILE_SIZE//3))
+    draw_text(screen, small_font, SMALL_FONT_SIZE, "SKIP", "white", (SKIP_BUTTON_X+TILE_SIZE//6, SKIP_BUTTON_Y+TILE_SIZE//3))
 
     pygame.draw.rect(screen, "grey45", (DONE_BUTTON_X, DONE_BUTTON_Y, TILE_SIZE, TILE_SIZE))
-    text = small_font.render("DONE", True, "white")
-    screen.blit(text, (DONE_BUTTON_X+TILE_SIZE//6, DONE_BUTTON_Y+TILE_SIZE//3))
+    draw_text(screen, small_font, SMALL_FONT_SIZE, "DONE", "white", (DONE_BUTTON_X+TILE_SIZE//6, DONE_BUTTON_Y+TILE_SIZE//3))
 
     if (game.state.err_message != "" and game.state.display_err_message):
-        msg = letter_font.render(game.state.err_message, True, "red")
-        screen.blit(msg, (ERR_MESSAGE_X, ERR_MESSAGE_Y))
+        draw_text(screen, letter_font, LETTER_FONT_SIZE, game.state.err_message, "red", (ERR_MESSAGE_X, ERR_MESSAGE_Y))
 
     if (game.state.game_over):
-        msg = letter_font.render(game.state.win_message, True, "white")
-        screen.blit(msg, (ERR_MESSAGE_X, ERR_MESSAGE_Y))
+        draw_text(screen, letter_font, LETTER_FONT_SIZE, game.state.win_message, "white", (ERR_MESSAGE_X, ERR_MESSAGE_Y))
 
 def draw_discard_pile(screen, small_font, letter_font):
     text = letter_font.render("Discard Pile:", True, "white")
@@ -189,14 +188,14 @@ def main():
     else:
         game = GameManager(current_letter, "dictionary.txt")
 
-    #print(f"Size of tree: {game.state.evaluator.word_tree.get_sizeof_node(game.state.evaluator.word_tree.head)}")
-
     global player1
     match (player1_choice['player1']):
         case "Human Player":
             player1 = Player(screen, small_font, letter_font, game.state.tiles_placed_on_turn, game.state.discard_pile, game.state.placed_tiles)
             player1.bank.events.Subscribe("bank_left_mouse", player1)
             player1.bank.events.Subscribe("bank_right_mouse", player1)
+            game.skip_button.events.Subscribe("skip_press", player1)
+            game.done_button.events.Subscribe("done_press", player1)
             game.play_button.events.Subscribe("play_press", player1)
             game.reset_button.events.Subscribe("reset_press", player1)
         case "AI Player":
@@ -208,6 +207,8 @@ def main():
             player2 = Player(screen, small_font, letter_font, game.state.tiles_placed_on_turn, game.state.discard_pile, game.state.placed_tiles)
             player2.bank.events.Subscribe("bank_left_mouse", player2)
             player2.bank.events.Subscribe("bank_right_mouse", player2)
+            game.skip_button.events.Subscribe("skip_press", player2)
+            game.done_button.events.Subscribe("done_press", player2)
             game.play_button.events.Subscribe("play_press", player2)
             game.reset_button.events.Subscribe("reset_press", player2)
         case "AI Player":
@@ -215,9 +216,6 @@ def main():
 
     running = True
     clock = pygame.time.Clock()
-
-    game.skip_button.events.Subscribe("skip_press", game)
-    game.done_button.events.Subscribe("done_press", game)
 
     game.state.players.append(player1)
     game.state.players.append(player2)
