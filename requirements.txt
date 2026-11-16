@@ -1,3 +1,4 @@
 pygame
 BitVector
 python-dotenv
+inquirer

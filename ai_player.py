@@ -1,21 +1,18 @@
 import pygame
+import time
 import BitVector as bv
 from common import *
-from enum import Enum
-
-class AIState(Enum):
-    WAITING = 0
-    MOVING = 1
-    DONE_MOVING = 2
+from bank import Bank
 
 class AIPlayer:
     def __init__(self, tiles_placed_on_turn, discard_pile, placed_tiles, evaluator):
-        self.bank = ["", "", "", "", "", "", ""]
+        self.bank = Bank()
         self.score = 0
         self.is_done = False
-        self.state = AIState.WAITING
+        self.state = PlayerState.WAITING
         self.highest_scoring_move = {}
         self.highest_score = 0
+        self.can_handle_ui = False
 
         self.tiles_placed_on_turn = tiles_placed_on_turn
         self.discard_pile = discard_pile
@@ -28,6 +25,9 @@ class AIPlayer:
         self.down_checks = {}
         self.across_anchors = []
         self.down_anchors = []
+
+        # Tracking how long a move takes to generate (to be averaged later)
+        self.move_gen_times = []
 
         self.InitCrossChecks()
 
@@ -43,34 +43,38 @@ class AIPlayer:
 
     def Reset(self):
         for tile in self.tiles_placed_on_turn:
-            index = self.bank.index("")
-            self.bank[index] = self.tiles_placed_on_turn[tile]
+            index = self.bank.bank.index("")
+            self.bank.bank[index] = self.tiles_placed_on_turn[tile]
 
         for tile in self.discard_pile:
-            index = self.bank.index("")
-            self.bank[index] = tile
+            index = self.bank.bank.index("")
+            self.bank.bank[index] = tile
         self.tiles_placed_on_turn.clear()
         self.discard_pile.clear()
 
     def PlayTurn(self):
-        self.state = AIState.MOVING
         # Update cross checks and anchor squares after new tiles have been placed
+        time0 = time.time()
         self.UpdateCrossChecksAndAnchors()
-        self.tiles_placed_on_turn.clear()
+        if (self.evaluator.state.is_first_move):
+            self.across_anchors.append((7, 7))
+            self.down_anchors.append((7, 7))
 
         self.GenerateMoves()
-        self.tiles_placed_on_turn.clear()
         for tile in self.highest_scoring_move:
             self.tiles_placed_on_turn[tile] = self.highest_scoring_move[tile]
-            index = self.bank.index(self.highest_scoring_move[tile])
-            self.bank[index] = ""
+            index = self.bank.bank.index(self.highest_scoring_move[tile])
+            self.bank.bank[index] = ""
+        time1 = time.time()
 
         # Clean up
-        self.state = AIState.DONE_MOVING
+        self.state = PlayerState.DONE_MOVING
         self.across_anchors.clear()
         self.down_anchors.clear()
         self.highest_scoring_move.clear()
         self.highest_score = 0
+
+        self.move_gen_times.append(time1-time0)
 
     def UpdateCrossChecksAndAnchors(self):
         for tile in self.placed_tiles:
@@ -151,15 +155,15 @@ class AIPlayer:
         self.ExtendRight(part_word, node, anchor)
         if (limit > 0):
             for letter in node.children:
-                if (letter.letter in self.bank):
+                if (letter.letter in self.bank.bank):
                     self.tiles_placed_on_turn[(anchor[0]-anchor_offset, anchor[1])] = letter.letter
-                    index = self.bank.index(letter.letter)
-                    self.bank[index] = ""
+                    index = self.bank.bank.index(letter.letter)
+                    self.bank.bank[index] = ""
                     part_word = letter.letter + part_word
 
                     self.LeftPart(part_word, letter, anchor, anchor_offset+1, limit-1)
 
-                    self.bank[index] = letter.letter
+                    self.bank.bank[index] = letter.letter
                     del self.tiles_placed_on_turn[(anchor[0]-anchor_offset, anchor[1])]
 
     def ExtendRight(self, part_word, node, square):
@@ -167,15 +171,15 @@ class AIPlayer:
             if (node.is_word_end):
                 self.LegalMove()
             for letter in node.children:
-                if (letter.letter in self.bank and self.LetterInCrossCheckSet(letter.letter, square, across=True)):
+                if (letter.letter in self.bank.bank and self.LetterInCrossCheckSet(letter.letter, square, across=True)):
                     self.tiles_placed_on_turn[square] = letter.letter
-                    index = self.bank.index(letter.letter)
-                    self.bank[index] = ""
+                    index = self.bank.bank.index(letter.letter)
+                    self.bank.bank[index] = ""
 
                     part_word += letter.letter
                     self.ExtendRight(part_word, letter, (square[0]+1, square[1]))
 
-                    self.bank[index] = letter.letter
+                    self.bank.bank[index] = letter.letter
                     del self.tiles_placed_on_turn[square]
         else:
             l = self.placed_tiles[square]
@@ -188,15 +192,15 @@ class AIPlayer:
         self.ExtendDown(part_word, node, anchor)
         if (limit > 0):
             for letter in node.children:
-                if (letter.letter in self.bank):
+                if (letter.letter in self.bank.bank):
                     self.tiles_placed_on_turn[(anchor[0], anchor[1]-anchor_offset)] = letter.letter
-                    index = self.bank.index(letter.letter)
-                    self.bank[index] = ""
+                    index = self.bank.bank.index(letter.letter)
+                    self.bank.bank[index] = ""
                     part_word = letter.letter + part_word
 
                     self.UpPart(part_word, letter, anchor, anchor_offset+1, limit-1)
 
-                    self.bank[index] = letter.letter
+                    self.bank.bank[index] = letter.letter
                     del self.tiles_placed_on_turn[(anchor[0], anchor[1]-anchor_offset)]
 
     def ExtendDown(self, part_word, node, square):
@@ -204,15 +208,15 @@ class AIPlayer:
             if (node.is_word_end):
                 self.LegalMove()
             for letter in node.children:
-                if (letter.letter in self.bank and self.LetterInCrossCheckSet(letter.letter, square, across=False)):
+                if (letter.letter in self.bank.bank and self.LetterInCrossCheckSet(letter.letter, square, across=False)):
                     self.tiles_placed_on_turn[square] = letter.letter
-                    index = self.bank.index(letter.letter)
-                    self.bank[index] = ""
+                    index = self.bank.bank.index(letter.letter)
+                    self.bank.bank[index] = ""
 
                     part_word += letter.letter
                     self.ExtendDown(part_word, letter, (square[0], square[1]+1))
 
-                    self.bank[index] = letter.letter
+                    self.bank.bank[index] = letter.letter
                     del self.tiles_placed_on_turn[square]
         else:
             l = self.placed_tiles[square]

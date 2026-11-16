@@ -7,18 +7,24 @@ from word_tree import *
 
 load_dotenv()
 
-SCREEN_WIDTH = 2160
-SCREEN_HEIGHT = 1215
+SCALE = 0.75
+
+SCREEN_WIDTH = SCALE * 2160
+SCREEN_HEIGHT = SCALE * 1215
+
+DEBOUNCE_TIME = 200
 
 FONT_PATH = os.getenv("FONT_PATH")
+LETTER_FONT_SIZE = int(SCALE * 80)
+SMALL_FONT_SIZE = int(SCALE * 20)
 
-TILE_SIZE = 72
+TILE_SIZE = SCALE * 72
 TILE_COLOR = (160, 120, 80)
 BG_COLOR = (55, 57, 58)
 BOARD_COLOR = (168, 157, 149)
-BOARD_SIZE = 1080
+BOARD_SIZE = SCALE * 1080
 BOARD_X = (SCREEN_WIDTH - BOARD_SIZE) // 2
-BOARD_Y = 25
+BOARD_Y = SCALE * 25
 PLAY_BUTTON_X = SCREEN_WIDTH - SCREEN_WIDTH//8
 PLAY_BUTTON_Y = SCREEN_HEIGHT - SCREEN_HEIGHT//6
 RESET_BUTTON_X = PLAY_BUTTON_X + TILE_SIZE + TILE_SIZE*.25
@@ -28,19 +34,28 @@ SKIP_BUTTON_Y = PLAY_BUTTON_Y
 DONE_BUTTON_X = RESET_BUTTON_X
 DONE_BUTTON_Y = RESET_BUTTON_Y + TILE_SIZE + TILE_SIZE*.25
 
+SCORE1_X = SCALE * 10
+SCORE1_Y = SCALE * 10
+SCORE2_X = SCALE * 10
+SCORE2_Y = SCALE * 80
+
+ERR_MESSAGE_X = SCALE * 10
+ERR_MESSAGE_Y = SCALE * 400
+
+DISCARD_TEXT_X = BOARD_X + BOARD_SIZE + TILE_SIZE*.25
+DISCARD_TEXT_Y = SCALE * 10
+
+DISCARD_TILES_X = DISCARD_TEXT_X
+DISCARD_TILES_Y = SCALE * 100
+
 BANK_SIZE = 7
 BINGO_BONUS = 50
 
-PLAYER_BANK_PADDING = BOARD_SIZE // 7
-PLAYER_BANK_Y = BOARD_Y + BOARD_SIZE + 20
-
-# Custom pygame events
-AI_SHOULD_PLAY = pygame.USEREVENT+1
-ai_should_play = pygame.event.Event(AI_SHOULD_PLAY, message="AI playing turn")
-
-AI_DONE_TURN = pygame.USEREVENT+1
-ai_done_turn = pygame.event.Event(AI_DONE_TURN, message="AI done playing turn")
-
+PLAYER_BANK_PADDING = SCALE * TILE_SIZE * .25
+PLAYER_BANK_WIDTH = (TILE_SIZE + PLAYER_BANK_PADDING) * 7 - PLAYER_BANK_PADDING
+PLAYER_BANK_HEIGHT = TILE_SIZE
+PLAYER_BANK_X = (BOARD_X + BOARD_SIZE / 2) - PLAYER_BANK_WIDTH / 2
+PLAYER_BANK_Y = BOARD_Y + BOARD_SIZE + TILE_SIZE*.25
 
 letters = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
 
@@ -71,7 +86,7 @@ letter_distribution = {
     "X":     1,
     "Y":     2,
     "Z":     1,
-    " ":     2,
+    " ":     0,
 }
 
 letter_values = {
@@ -104,30 +119,6 @@ letter_values = {
     " ":     0,
 }
 
-class GameState:
-    player_turn = 0
-    err_message = ""
-    win_message = ""
-    is_first_move = True
-    letter_bag_empty = False
-    turns_without_move = 0
-    game_over = False
-    # Stores all tiles placed by the players as index in spaces : letter
-    # (0, 0): "A"
-    placed_tiles = {}
-
-    # Tiles placed during a player's turn. Temporary and is wiped after every turn
-    tiles_placed_on_turn = {}
-
-    # Tiles in to be removed from player's letter bank
-    discard_pile = []
-
-    def __init__(self, current_letter, dict_file):
-        self.current_letter = current_letter
-        # Imported here to avoid a circular import (evaluator imports common)
-        from evaluator import Evaluator
-        self.evaluator = Evaluator(self.tiles_placed_on_turn, self.placed_tiles, dict_file, self)
-
 
 # This enum represents the score multiplier for a tile
 class Space(Enum):
@@ -137,6 +128,10 @@ class Space(Enum):
     DOUBLE_WORD = 3
     TRIPLE_WORD = 4
 
+class PlayerState(Enum):
+    WAITING = 0
+    MOVING = 1
+    DONE_MOVING = 2
 
 spaces: Space = [
     [4,0,0,1,0,0,0,4,0,0,0,1,0,0,4],
@@ -184,7 +179,7 @@ def draw_tile(screen, small_font, letter_font, color, letter, x, y):
         tile = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
         pygame.draw.rect(screen, color, tile)
     text = letter_font.render(letter, True, "black");
-    screen.blit(text, (x+17, y-7))
+    screen.blit(text, (x+SCALE*17, y-SCALE*7))
     value = small_font.render(str(letter_values[letter]), True, "black")
     screen.blit(value, (x+TILE_SIZE-TILE_SIZE//6, y+TILE_SIZE-TILE_SIZE//3))
 

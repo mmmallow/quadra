@@ -59,3 +59,11 @@ class WordTree:
             print(cur_children[0].letter)
             cur_children = cur_children[0].children
 
+    def get_sizeof_node(self, node):
+        size = 0
+        if (len(node.children) == 0):
+            return sys.getsizeof(node)
+        for child in node.children:
+            size += self.get_sizeof_node(child)
+
+        return size

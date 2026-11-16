@@ -1,12 +1,17 @@
 import pygame
+import time
 from common import *
+from event_listener import EventListener
+from bank import Bank
 
-class Player:
+class Player(EventListener):
     def __init__(self, screen, small_font, letter_font, tiles_placed_on_turn, discard_pile, placed_tiles):
-        self.bank = ["", "", "", "", "", "", ""]
+        self.bank = Bank()
         self.held_letter = ""
         self.score = 0
         self.is_done = False
+        self.state = PlayerState.WAITING
+        self.debounce_time = 0
 
         self.screen = screen
         self.small_font = small_font
@@ -16,11 +21,7 @@ class Player:
         self.placed_tiles = placed_tiles
 
     def Draw(self):
-        for i in range(0, 7):
-            if (self.bank[i] != ""):
-                x = BOARD_X + i*(PLAYER_BANK_PADDING)+43
-                y = PLAYER_BANK_Y
-                draw_tile(self.screen, self.small_font, self.letter_font, TILE_COLOR, self.bank[i], x, y)
+        self.bank.Draw(self.screen, self.small_font, self.letter_font)
 
         if (self.held_letter != ""):
             mouse_pos = pygame.mouse.get_pos()
@@ -29,28 +30,56 @@ class Player:
             pos[1] = mouse_pos[1]-TILE_SIZE//2
             draw_tile(self.screen, self.small_font, self.letter_font, TILE_COLOR, self.held_letter, pos[0], pos[1])
 
+    def Listen(self, event, data):
+        match (event):
+            case "play_press":
+                self.state = PlayerState.DONE_MOVING
+            case "reset_press":
+                self.Reset()
+            case "bank_left_mouse":
+                self.HandleLeftMousePress()
+            case "bank_right_mouse":
+                self.HandleRightMousePress()
+            case "board_press":
+                self.HandleLeftMousePress()
+
+    def PlayTurn(self):
+        pass
+
     def Reset(self):
         for tile in self.tiles_placed_on_turn:
-            index = self.bank.index("")
-            self.bank[index] = self.tiles_placed_on_turn[tile]
+            if ("" in self.bank.bank):
+                index = self.bank.bank.index("")
+                self.bank.bank[index] = self.tiles_placed_on_turn[tile]
 
         for tile in self.discard_pile:
-            index = self.bank.index("")
-            self.bank[index] = tile
+            if ("" in self.bank.bank):
+                index = self.bank.bank.index("")
+                self.bank.bank[index] = tile
         self.tiles_placed_on_turn.clear()
         self.discard_pile.clear()
 
     def HandleLeftMousePress(self):
+        '''
+        if (self.debounce_time == 0):
+            self.debounce_time = time.time()
+        else:
+            if (time.time()-self.debounce_time <= DEBOUNCE_TIME):
+                self.debounce_time = 0
+            else:
+                return
+        '''
+
         mouse_pos = pygame.mouse.get_pos()
         if (self.held_letter == ""):
             for i in range(0,7):
-                tile = pygame.Rect(BOARD_X + i*(PLAYER_BANK_PADDING)+43, PLAYER_BANK_Y, TILE_SIZE, TILE_SIZE)
+                tile = self.bank.GetTile(i)
                 if (tile.collidepoint(mouse_pos)):
                     if (self.held_letter != ""):
-                        index = self.bank.index("")
-                        self.bank[index] = self.held_letter
-                    self.held_letter = self.bank[i]
-                    self.bank[i] = ""
+                        index = self.bank.bank.index("")
+                        self.bank.bank[index] = self.held_letter
+                    self.held_letter = self.bank.bank[i]
+                    self.bank.bank[i] = ""
                     break
 
             if (self.held_letter == ""):
@@ -67,23 +96,23 @@ class Player:
                 board_x = (mouse_pos[0] - BOARD_X) // TILE_SIZE
                 board_y = (mouse_pos[1] - BOARD_Y) // TILE_SIZE
                 if ((board_x, board_y) in self.tiles_placed_on_turn):
-                    index = self.bank.index("")
-                    self.bank[index] = self.tiles_placed_on_turn[(board_x, board_y)]
+                    index = self.bank.bank.index("")
+                    self.bank.bank[index] = self.tiles_placed_on_turn[(board_x, board_y)]
                 if ((board_x, board_y) not in self.placed_tiles):
                     self.tiles_placed_on_turn[(board_x, board_y)] = self.held_letter
                     self.held_letter = ""
             else:
-                index = self.bank.index("")
-                self.bank[index] = self.held_letter
+                index = self.bank.bank.index("")
+                self.bank.bank[index] = self.held_letter
                 self.held_letter = ""
 
     def HandleRightMousePress(self):
         mouse_pos = pygame.mouse.get_pos()
         if (self.held_letter == ""):
             for i in range(0, 7):
-                tile = pygame.Rect(BOARD_X + i*(PLAYER_BANK_PADDING)+43, PLAYER_BANK_Y, TILE_SIZE, TILE_SIZE)
+                tile = self.bank.GetTile(i)
                 if (tile.collidepoint(mouse_pos)):
-                    self.discard_pile.append(self.bank[i])
-                    self.bank[i] = ""
+                    self.discard_pile.append(self.bank.bank[i])
+                    self.bank.bank[i] = ""
                     break
 

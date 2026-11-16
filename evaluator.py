@@ -3,9 +3,9 @@ from common import *
 from word_tree import *
 
 class Evaluator:
-    def __init__(self, tiles_placed_on_turn, placed_tiles, dict_file, state):
-        self.tiles_placed_on_turn = tiles_placed_on_turn
-        self.placed_tiles = placed_tiles
+    def __init__(self, state, dict_file):
+        self.tiles_placed_on_turn = state.tiles_placed_on_turn
+        self.placed_tiles = state.placed_tiles
         self.state = state
 
         extension = os.path.splitext(dict_file)[1]
@@ -97,7 +97,8 @@ class Evaluator:
         for cell in cells:
             value = letter_values[get_letter(self.placed_tiles, self.tiles_placed_on_turn, cell)]
             if (cell in self.tiles_placed_on_turn):
-                x, y = cell
+                x = int(cell[0])
+                y = int(cell[1])
                 match (Space(spaces[y][x])):
                     case Space.DOUBLE_LETTER:
                         value *= 2
