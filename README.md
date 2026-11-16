@@ -9,14 +9,14 @@ in the future I plan to add TD learning.
 
 ## Installation
 
-'''bash
+```bash
 pip install -r requirements.txt
-'''
+```
 
 ## Usage
-'''bash
+```bash
 python3 main.py
-'''
+```
 
 ## License
 
